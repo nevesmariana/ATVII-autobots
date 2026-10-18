@@ -11,6 +11,7 @@ import com.autobots.automanager.dto.response.TelefoneResponseDTO;
 import com.autobots.automanager.entidades.Telefone;
 import com.autobots.automanager.excecoes.TelefoneNaoEncontradoException;
 import com.autobots.automanager.mapper.TelefoneMapper;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.TelefoneRepositorio;
 
 @Service
@@ -21,6 +22,9 @@ public class TelefoneService {
 
     @Autowired
     private TelefoneMapper mapper;
+
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
 
     public TelefoneResponseDTO cadastrarTelefone(
             TelefoneRequestDTO dto) {
@@ -67,6 +71,12 @@ public class TelefoneService {
         Telefone telefone = repositorio.findById(id)
                 .orElseThrow(() -> new TelefoneNaoEncontradoException(id));
 
-        repositorio.delete(telefone);
+        clienteRepositorio.findByTelefones_Id(id)
+                .ifPresentOrElse(
+                        cliente -> {
+                            cliente.getTelefones().remove(telefone);
+                            clienteRepositorio.save(cliente);
+                        },
+                        () -> repositorio.delete(telefone));
     }
 }

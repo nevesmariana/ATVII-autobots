@@ -1,11 +1,14 @@
 package com.autobots.automanager.controles;
 
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.linkTo;
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.methodOn;
+
 import java.util.List;
 
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
+import org.springframework.hateoas.CollectionModel;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,37 +21,49 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.autobots.automanager.dto.request.TelefoneRequestDTO;
 import com.autobots.automanager.dto.response.TelefoneResponseDTO;
+import com.autobots.automanager.hateoas.AdicionadorLinkTelefone;
 import com.autobots.automanager.service.TelefoneService;
 
 @RestController
-@RequestMapping("/telefone")
+@RequestMapping("/telefones")
 public class TelefoneControle {
 
     @Autowired
     private TelefoneService service;
 
-    @PostMapping("/cadastro")
+    @Autowired
+    private AdicionadorLinkTelefone adicionadorLink;
+
+    @GetMapping
+    public ResponseEntity<CollectionModel<TelefoneResponseDTO>> obterTelefones() {
+        List<TelefoneResponseDTO> lista = service.obterTelefones();
+        adicionadorLink.adicionarLink(lista);
+
+        CollectionModel<TelefoneResponseDTO> colecao = CollectionModel.of(lista);
+        colecao.add(linkTo(methodOn(TelefoneControle.class).obterTelefones()).withSelfRel());
+        colecao.add(linkTo(methodOn(TelefoneControle.class).cadastrarTelefone(null)).withRel("cadastrar"));
+
+        return ResponseEntity.ok(colecao);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TelefoneResponseDTO> obterTelefone(@PathVariable Long id) {
+        TelefoneResponseDTO resposta = service.obterTelefone(id);
+        adicionadorLink.adicionarLink(resposta);
+
+        return ResponseEntity.ok(resposta);
+    }
+
+    @PostMapping
     public ResponseEntity<TelefoneResponseDTO> cadastrarTelefone(
             @Valid @RequestBody TelefoneRequestDTO dto) {
 
         TelefoneResponseDTO resposta = service.cadastrarTelefone(dto);
+        adicionadorLink.adicionarLink(resposta);
 
         return ResponseEntity
-                .status(HttpStatus.CREATED)
+                .created(linkTo(methodOn(TelefoneControle.class).obterTelefone(resposta.getId())).toUri())
                 .body(resposta);
-    }
-
-    @GetMapping("/telefones")
-    public ResponseEntity<List<TelefoneResponseDTO>> obterTelefones() {
-
-        return ResponseEntity.ok(service.obterTelefones());
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<TelefoneResponseDTO> obterTelefone(
-            @PathVariable Long id) {
-
-        return ResponseEntity.ok(service.obterTelefone(id));
     }
 
     @PutMapping("/{id}")
@@ -56,15 +71,14 @@ public class TelefoneControle {
             @PathVariable Long id,
             @Valid @RequestBody TelefoneRequestDTO dto) {
 
-        return ResponseEntity.ok(
-                service.atualizarTelefone(id, dto)
-        );
+        TelefoneResponseDTO resposta = service.atualizarTelefone(id, dto);
+        adicionadorLink.adicionarLink(resposta);
+
+        return ResponseEntity.ok(resposta);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> excluirTelefone(
-            @PathVariable Long id) {
-
+    public ResponseEntity<Void> excluirTelefone(@PathVariable Long id) {
         service.excluirTelefone(id);
 
         return ResponseEntity.noContent().build();

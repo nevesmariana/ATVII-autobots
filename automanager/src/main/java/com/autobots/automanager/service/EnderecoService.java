@@ -11,6 +11,7 @@ import com.autobots.automanager.dto.response.EnderecoResponseDTO;
 import com.autobots.automanager.entidades.Endereco;
 import com.autobots.automanager.excecoes.EnderecoNaoEncontradoException;
 import com.autobots.automanager.mapper.EnderecoMapper;
+import com.autobots.automanager.repositorios.ClienteRepositorio;
 import com.autobots.automanager.repositorios.EnderecoRepositorio;
 
 @Service
@@ -21,6 +22,9 @@ public class EnderecoService {
 
     @Autowired
     private EnderecoMapper mapper;
+
+    @Autowired
+    private ClienteRepositorio clienteRepositorio;
 
     public EnderecoResponseDTO cadastrarEndereco(
             EnderecoRequestDTO dto) {
@@ -67,6 +71,12 @@ public class EnderecoService {
         Endereco endereco = repositorio.findById(id)
                 .orElseThrow(() -> new EnderecoNaoEncontradoException(id));
 
-        repositorio.delete(endereco);
+        clienteRepositorio.findByEndereco_Id(id)
+                .ifPresentOrElse(
+                        cliente -> {
+                            cliente.setEndereco(null);
+                            clienteRepositorio.save(cliente);
+                        },
+                        () -> repositorio.delete(endereco));
     }
 }

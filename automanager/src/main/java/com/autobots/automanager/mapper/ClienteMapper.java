@@ -158,24 +158,48 @@ public class ClienteMapper {
 
         if (dto.getDocumentos() != null) {
 
-            cliente.getDocumentos().clear();
+            List<String> numerosRecebidos = new ArrayList<>();
 
             for (DocumentoRequestDTO dtoDocumento : dto.getDocumentos()) {
 
-                Documento documento = new Documento();
+                numerosRecebidos.add(dtoDocumento.getNumero());
 
-                documento.setTipo(dtoDocumento.getTipo());
-                documento.setNumero(dtoDocumento.getNumero());
+                // procura um documento que o cliente já tem com esse número
+                Documento existente = null;
+                for (Documento atual : cliente.getDocumentos()) {
+                    if (atual.getNumero().equals(dtoDocumento.getNumero())) {
+                        existente = atual;
+                        break;
+                    }
+                }
 
-                cliente.getDocumentos().add(documento);
+                if (existente != null) {
+                    // já existe: só atualiza o tipo, sem inserir de novo
+                    existente.setTipo(dtoDocumento.getTipo());
+                } else {
+                    Documento documento = new Documento();
+
+                    documento.setTipo(dtoDocumento.getTipo());
+                    documento.setNumero(dtoDocumento.getNumero());
+
+                    cliente.getDocumentos().add(documento);
+                }
             }
+
+            // remove os documentos que não vieram na atualização
+            cliente.getDocumentos().removeIf(
+                    documento -> !numerosRecebidos.contains(documento.getNumero()));
         }
 
         if (dto.getEndereco() != null) {
 
             EnderecoRequestDTO dtoEndereco = dto.getEndereco();
 
-            Endereco endereco = new Endereco();
+            Endereco endereco = cliente.getEndereco();
+            if (endereco == null) {
+                endereco = new Endereco();
+                cliente.setEndereco(endereco);
+            }
 
             endereco.setEstado(dtoEndereco.getEstado());
             endereco.setCidade(dtoEndereco.getCidade());
@@ -186,8 +210,6 @@ public class ClienteMapper {
             endereco.setInformacoesAdicionais(
                 dtoEndereco.getInformacoesAdicionais()
             );
-
-            cliente.setEndereco(endereco);
         }
 
         if (dto.getTelefones() != null) {

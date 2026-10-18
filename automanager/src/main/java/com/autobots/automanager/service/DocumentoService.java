@@ -81,10 +81,12 @@ public class DocumentoService {
         Documento documento = repositorio.findById(id)
                 .orElseThrow(() -> new DocumentoNaoEncontradoException(id));
 
-        clienteRepositorio.findByDocumentos_Id(id)
-                .ifPresent(cliente -> {
-                    cliente.getDocumentos().remove(documento);
-                    clienteRepositorio.save(cliente);
-                });
+            clienteRepositorio.findByDocumentos_Id(id)
+                .ifPresentOrElse(
+                    cliente -> {
+                        cliente.getDocumentos().remove(documento);
+                            clienteRepositorio.save(cliente);
+                    },
+                () -> repositorio.delete(documento));
     }
 }

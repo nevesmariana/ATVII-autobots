@@ -1,14 +1,15 @@
 # AutoManager - AutoBots
 
-Sistema desenvolvido para a atividade prática da disciplina, utilizando uma arquitetura baseada em Spring Boot para gerenciamento de clientes de uma empresa de manutenção veicular e venda de autopeças.
+Sistema desenvolvido para as atividades práticas da disciplina, utilizando uma arquitetura baseada em Spring Boot (micro-serviço) para gerenciamento de clientes de uma empresa de manutenção veicular e venda de autopeças.
 
 O projeto implementa CRUDs para clientes, documentos, endereços e telefones, utilizando DTOs, Services, Repositories, Controllers e regras de negócio.
 
 ---
 
-# Objetivo da atividade
+# Objetivo das atividades
 
-Esta atividade tem como objetivo completar o CRUD básico de um sistema de gestão utilizando uma arquitetura organizada e conceitos de desenvolvimento de aplicações web.
+- **ATVI:** completar o CRUD básico de um sistema de gestão utilizando uma arquitetura organizada.
+- **ATVII:** evoluir a API para atender os quatro níveis do Richardson Maturity Model (RMM), incluindo HATEOAS.
 
 ## Tecnologias utilizadas
 
@@ -21,12 +22,12 @@ Esta atividade tem como objetivo completar o CRUD básico de um sistema de gest�
 | Lombok | Utilizado no projeto |
 | Spring Data JPA | Utilizado no projeto |
 | Spring Web | Utilizado no projeto |
+| Spring HATEOAS | Utilizado no projeto (ATVII) |
+| H2 | Banco em memória (os dados zeram a cada reinício) |
 
 ---
 
 ## Como executar o projeto
-
-### 1. Abrir o terminal
 
 Entre na pasta do projeto:
 
@@ -34,21 +35,7 @@ Entre na pasta do projeto:
 cd automanager
 ```
 
----
-
-### 2. Configurar o Java
-
-O projeto foi executado utilizando:
-
-```text
-Java 17.0.20.1
-```
-
----
-
-## Executando a aplicação
-
-Com o terminal na pasta do projeto automanager:
+Execute a aplicação (Java 17):
 
 ```cmd
 mvnw.cmd spring-boot:run
@@ -66,23 +53,82 @@ A API estará disponível em:
 http://localhost:8080
 ```
 
-# Rotas da API
-As rotas podem ser testadas utilizando ferramentas como:
+---
 
-- Postman
-- Insomnia
-- Thunder Client
-- Navegador, para requisições GET
+# Níveis de maturidade (RMM) - ATVII
 
-## Cliente
+| Nível | Conceito | Como foi atendido |
+|---|---|---|
+| 0 | Uso do protocolo HTTP | API REST sobre HTTP, com JSON |
+| 1 | URI única por recurso | `/clientes`, `/documentos`, `/enderecos`, `/telefones` (substantivos, sem verbos na URI) |
+| 2 | Métodos HTTP e suas semânticas | GET consulta, POST cria, PUT atualiza, DELETE remove, cada um com o status HTTP adequado |
+| 3 | HATEOAS | Respostas trazem `_links` (Spring HATEOAS, formato HAL) para navegação entre os recursos |
 
-### Cadastrar cliente
+## Ponto de entrada
 
 ```http
-POST /cliente/cadastro
+GET /
 ```
 
-Body:
+Retorna links para `clientes`, `documentos`, `enderecos` e `telefones`. Um consumidor da API só precisa conhecer essa URL e seguir os links.
+
+## Links retornados (`_links`)
+
+| Resposta | Links |
+|---|---|
+| Item de uma listagem | `self` |
+| Recurso individual | `self`, link da coleção, `atualizar`, `excluir` |
+| Cliente | além dos acima, `self` de cada documento, endereço e telefone aninhados |
+| Coleção | `self`, `cadastrar` |
+
+Exemplo (`GET /clientes/1`):
+
+```json
+{
+    "id": 1,
+    "nome": "Laura Silva",
+    "documentos": [
+        {
+            "id": 1,
+            "tipo": "CPF",
+            "numero": "12345678900",
+            "_links": { "self": { "href": "http://localhost:8080/documentos/1" } }
+        }
+    ],
+    "_links": {
+        "self":      { "href": "http://localhost:8080/clientes/1" },
+        "clientes":  { "href": "http://localhost:8080/clientes" },
+        "atualizar": { "href": "http://localhost:8080/clientes/1" },
+        "excluir":   { "href": "http://localhost:8080/clientes/1" }
+    }
+}
+```
+
+---
+
+# Rotas da API
+
+As rotas podem ser testadas com Postman, Insomnia, Thunder Client ou navegador (para GET).
+
+| Recurso | Listar | Buscar | Cadastrar | Atualizar | Excluir |
+|---|---|---|---|---|---|
+| Cliente | `GET /clientes` | `GET /clientes/{id}` | `POST /clientes` | `PUT /clientes/{id}` | `DELETE /clientes/{id}` |
+| Documento | `GET /documentos` | `GET /documentos/{id}` | `POST /documentos` | `PUT /documentos/{id}` | `DELETE /documentos/{id}` |
+| Endereço | `GET /enderecos` | `GET /enderecos/{id}` | `POST /enderecos` | `PUT /enderecos/{id}` | `DELETE /enderecos/{id}` |
+| Telefone | `GET /telefones` | `GET /telefones/{id}` | `POST /telefones` | `PUT /telefones/{id}` | `DELETE /telefones/{id}` |
+
+## Códigos de status
+
+| Operação | Sucesso | Falha |
+|---|---|---|
+| GET | 200 | 404 (não encontrado) |
+| POST | 201 + header `Location` | 400 (validação), 409 (documento duplicado) |
+| PUT | 200 | 400, 404, 409 |
+| DELETE | 204 | 404 |
+
+## Bodies de exemplo
+
+### Cliente (`POST /clientes`)
 
 ```json
 {
@@ -91,10 +137,7 @@ Body:
     "dataNascimento": "2003-05-15",
     "dataCadastro": "2026-09-27",
     "documentos": [
-        {
-            "tipo": "CPF",
-            "numero": "12345678900"
-        }
+        { "tipo": "CPF", "numero": "12345678900" }
     ],
     "endereco": {
         "estado": "SP",
@@ -106,92 +149,18 @@ Body:
         "informacoesAdicionais": "Casa"
     },
     "telefones": [
-        {
-            "ddd": "12",
-            "numero": "999999999"
-        }
+        { "ddd": "12", "numero": "999999999" }
     ]
 }
 ```
 
-### Listar clientes
-
-```http
-GET /cliente/clientes
-```
-
-### Buscar cliente
-
-```http
-GET /cliente/cliente/{id}
-```
-
-### Atualizar cliente
-
-```http
-PUT /cliente/atualizar/{id}
-```
-
-### Excluir cliente
-
-```http
-DELETE /cliente/excluir/{id}
-```
-
----
-
-## Documento
-
-### Cadastrar documento
-
-```http
-POST /documento/cadastro
-```
-
-Body:
+### Documento (`POST /documentos`)
 
 ```json
-{
-    "tipo": "CPF",
-    "numero": "12345678900"
-}
+{ "tipo": "CPF", "numero": "12345678900" }
 ```
 
-### Listar documentos
-
-```http
-GET /documento/documentos
-```
-
-### Buscar documento
-
-```http
-GET /documento/{id}
-```
-
-### Atualizar documento
-
-```http
-PUT /documento/{id}
-```
-
-### Excluir documento
-
-```http
-DELETE /documento/{id}
-```
-
----
-
-## Endereço
-
-### Cadastrar endereço
-
-```http
-POST /endereco/cadastro
-```
-
-Body:
+### Endereço (`POST /enderecos`)
 
 ```json
 {
@@ -205,74 +174,19 @@ Body:
 }
 ```
 
-### Listar endereços
-
-```http
-GET /endereco/enderecos
-```
-
-### Buscar endereço
-
-```http
-GET /endereco/{id}
-```
-
-### Atualizar endereço
-
-```http
-PUT /endereco/{id}
-```
-
-### Excluir endereço
-
-```http
-DELETE /endereco/{id}
-```
-
----
-
-## Telefone
-
-### Cadastrar telefone
-
-```http
-POST /telefone/cadastro
-```
-
-Body:
+### Telefone (`POST /telefones`)
 
 ```json
-{
-    "ddd": "12",
-    "numero": "999999999"
-}
-```
-
-### Listar telefones
-
-```http
-GET /telefone/telefones
-```
-
-### Buscar telefone
-
-```http
-GET /telefone/{id}
-```
-
-### Atualizar telefone
-
-```http
-PUT /telefone/{id}
-```
-
-### Excluir telefone
-
-```http
-DELETE /telefone/{id}
+{ "ddd": "12", "numero": "999999999" }
 ```
 
 ---
+
+# Regras de negócio
+
+- Não é possível cadastrar dois documentos com o mesmo número (retorna 409).
+- Ao atualizar um cliente, documentos com número já existente no próprio cliente são mantidos e apenas atualizados.
+- Ao excluir um documento, endereço ou telefone que pertence a um cliente, ele é desvinculado do cliente e removido.
 
 # Tratamento de erros
 
@@ -283,3 +197,4 @@ O projeto possui exceções específicas para situações como:
 - Endereço não encontrado
 - Telefone não encontrado
 - Documento duplicado
+- Dados inválidos (validação dos campos obrigatórios)
